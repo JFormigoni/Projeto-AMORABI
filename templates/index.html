@@ -1,0 +1,2362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AMORABI - Sistema de Biblioteca</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    /* ── Variáveis & Reset ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    * { max-width: 100%; }
+
+    :root {
+      --cream:   #f5f0e8;
+      --paper:   #faf7f2;
+      --ink:     #1a1410;
+      --ink2:    #3d3530;
+      --ink3:    #7a6e65;
+      --rust:    #b84a2e;
+      --gold:    #c8943a;
+      --sage:    #4a6741;
+      --border:  #d8cfc4;
+      --shadow:  rgba(26,20,16,.12);
+      --radius:  6px;
+      --font-d:  'Playfair Display', Georgia, serif;
+      --font-b:  'IBM Plex Sans', sans-serif;
+      --font-m:  'IBM Plex Mono', monospace;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: var(--font-b);
+      background: var(--cream);
+      color: var(--ink);
+      font-size: 15px;
+      line-height: 1.6;
+      overflow-x: hidden;
+      position: fixed;
+      width: 100%;
+    }
+
+    /* ── Layout principal ──────────────────────────────────── */
+    .app { display: flex; height: 100vh; overflow: hidden; width: 100%; }
+
+    /* ── Sidebar ───────────────────────────────────────────── */
+    .sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: var(--ink);
+      color: var(--cream);
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+    }
+
+    .sidebar-logo {
+      padding: 28px 24px 22px;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+    .sidebar-logo h1 {
+      font-family: var(--font-d);
+      font-size: 1.4rem;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--cream);
+    }
+    .sidebar-logo span {
+      font-family: var(--font-b);
+      font-size: .72rem;
+      font-weight: 300;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--gold);
+      display: block;
+      margin-top: 4px;
+    }
+
+    .sidebar nav { flex: 1; padding: 16px 0; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 24px;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      font-size: .88rem;
+      font-weight: 400;
+      color: rgba(245,240,232,.65);
+      border-left: 3px solid transparent;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.06); color: var(--cream); }
+    .nav-item.active {
+      background: rgba(200,148,58,.12);
+      color: var(--gold);
+      border-left-color: var(--gold);
+      font-weight: 500;
+    }
+    .nav-item .icon { font-size: 1.1rem; width: 20px; text-align: center; }
+
+    .sidebar-footer {
+      padding: 16px 24px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      font-size: .75rem;
+      color: rgba(245,240,232,.3);
+    }
+
+    /* ── Área de conteúdo ──────────────────────────────────── */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background: var(--paper);
+      max-width: 100%;
+    }
+
+    .page { display: none; padding: 36px 40px; max-width: 1100px; overflow-x: hidden; }
+    .page.active { display: block; }
+
+    /* ── Cabeçalho das páginas ─────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid var(--border);
+    }
+    .page-header h2 {
+      font-family: var(--font-d);
+      font-size: 1.9rem;
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1;
+    }
+    .page-header p {
+      font-size: .82rem;
+      color: var(--ink3);
+      margin-top: 5px;
+    }
+
+    /* ── Botões ────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 9px 18px;
+      border-radius: var(--radius);
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-b);
+      font-size: .85rem;
+      font-weight: 500;
+      transition: all .18s;
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--rust); color: #fff; }
+    .btn-primary:hover { background: #a33f26; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(184,74,46,.3); }
+    .btn-secondary { background: transparent; color: var(--ink2); border: 1.5px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--ink3); background: var(--cream); }
+    .btn-danger { background: transparent; color: #c0392b; border: 1.5px solid #e8b4b0; }
+    .btn-danger:hover { background: #fdf0ef; border-color: #c0392b; }
+    .btn-success { background: transparent; color: var(--sage); border: 1.5px solid #a8c8a4; }
+    .btn-success:hover { background: #edf5ec; }
+    .btn-sm { 
+      padding: 6px 10px; 
+      font-size: .8rem;
+      min-width: 36px;
+    }
+    .btn-sm:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 3px 8px rgba(26,20,16,.15);
+    }
+
+    /* ── Modal ─────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(26,20,16,.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--paper);
+      border-radius: var(--radius);
+      padding: 28px;
+      max-width: 700px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(26,20,16,.3);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--border);
+    }
+    .modal-header h3 {
+      font-family: var(--font-d);
+      font-size: 1.3rem;
+      color: var(--ink);
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--ink3);
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background .15s;
+    }
+    .modal-close:hover { background: var(--border); }
+    .modal-body { margin-bottom: 20px; }
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Cards de estatísticas ─────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+    .stat-card {
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: box-shadow .2s;
+    }
+    .stat-card:hover { box-shadow: 0 4px 16px var(--shadow); }
+    .stat-label {
+      font-size: .72rem;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--ink3);
+      margin-bottom: 8px;
+    }
+    .stat-value {
+      font-family: var(--font-d);
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1;
+    }
+    .stat-card.accent .stat-value { color: var(--rust); }
+    .stat-card.gold .stat-value { color: var(--gold); }
+    .stat-card.green .stat-value { color: var(--sage); }
+
+    /* ── Formulários ───────────────────────────────────────── */
+    .form-card {
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+    .form-card h3 {
+      font-family: var(--font-d);
+      font-size: 1.1rem;
+      margin-bottom: 18px;
+      color: var(--ink2);
+    }
+    .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .form-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+    .form-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { 
+      font-size: .78rem; 
+      font-weight: 500; 
+      color: var(--ink2);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .field label .icon-info {
+      font-size: .7rem;
+      color: var(--ink3);
+      cursor: help;
+    }
+    .field input, .field select {
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      font-family: var(--font-b);
+      font-size: .88rem;
+      background: var(--paper);
+      color: var(--ink);
+      transition: border-color .15s, background .15s;
+      outline: none;
+    }
+    .field input:focus, .field select:focus { 
+      border-color: var(--gold);
+      background: #fff;
+    }
+    .field select {
+      cursor: pointer;
+    }
+    .field select option {
+      padding: 8px;
+    }
+    .form-actions { margin-top: 18px; display: flex; gap: 10px; }
+
+    /* ── Tabelas ───────────────────────────────────────────── */
+    .table-card {
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .table-header h3 {
+      font-family: var(--font-d);
+      font-size: 1rem;
+      color: var(--ink2);
+    }
+    .table-count {
+      font-size: .75rem;
+      background: var(--border);
+      color: var(--ink2);
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      table-layout: fixed;
+    }
+    thead tr { background: var(--ink); color: var(--cream); }
+    thead th {
+      padding: 12px 10px;
+      text-align: center;
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      vertical-align: middle;
+      border-right: 1px solid rgba(255,255,255,.1);
+    }
+    thead th:last-child {
+      border-right: none;
+    }
+    thead th.th-isbn { width: 10%; }
+    thead th.th-titulo { width: 25%; text-align: left; padding-left: 16px; }
+    thead th.th-autor { width: 18%; text-align: left; }
+    thead th.th-ano { width: 7%; }
+    thead th.th-genero { width: 12%; }
+    thead th.th-quantidade { width: 8%; }
+    thead th.th-disponivel { width: 8%; }
+    thead th.th-livro { width: 20%; text-align: left; padding-left: 16px; }
+    thead th.th-associado { width: 15%; text-align: left; }
+    thead th.th-telefone { width: 12%; }
+    thead th.th-data { width: 10%; }
+    thead th.th-acoes { 
+      width: 12%;
+      text-align: center;
+      padding: 12px 8px;
+    }
+    thead th.th-status {
+      width: 10%;
+      text-align: center;
+      padding: 12px;
+    }
+    tbody tr { 
+      border-bottom: 1px solid var(--border); 
+      transition: background .15s, box-shadow .15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { 
+      background: rgba(200,148,58,.06);
+      box-shadow: 0 2px 8px rgba(26,20,16,.08);
+    }
+    tbody td { 
+      padding: 14px 10px; 
+      font-size: .85rem; 
+      color: var(--ink2); 
+      vertical-align: middle; 
+      text-align: center;
+      border-right: 1px solid rgba(216,207,196,.3);
+    }
+    tbody td:last-child {
+      border-right: none;
+    }
+    tbody td.td-isbn {
+      font-family: var(--font-m);
+      font-size: .78rem;
+      color: var(--ink3);
+    }
+    tbody td.td-titulo {
+      text-align: left;
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+    tbody td.td-titulo strong {
+      display: block;
+      font-size: .9rem;
+      font-weight: 600;
+      line-height: 1.4;
+      color: var(--ink);
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
+    }
+    tbody td.td-autor {
+      text-align: left;
+      font-size: .85rem;
+      color: var(--ink2);
+    }
+    tbody td.td-ano {
+      font-size: .82rem;
+      color: var(--ink3);
+    }
+    tbody td.td-genero {
+      font-size: .82rem;
+      color: var(--ink2);
+    }
+    tbody td .livro-info, tbody td .aluno-info { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 3px;
+      text-align: left;
+    }
+    tbody td .livro-info strong, tbody td .aluno-info strong { 
+      display: block; 
+      font-size: .88rem;
+      line-height: 1.4;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      white-space: normal;
+      max-width: 100%;
+    }
+    tbody td .livro-info .code, tbody td .aluno-info .code { 
+      display: block; 
+      font-size: .7rem;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    tbody td.td-telefone {
+      white-space: nowrap;
+      font-size: .8rem;
+      text-align: center;
+      vertical-align: middle;
+    }
+    tbody td.td-acoes { 
+      text-align: center; 
+      vertical-align: middle; 
+      white-space: nowrap;
+      padding: 12px 8px;
+    }
+    tbody td.td-acoes > div { 
+      display: flex; 
+      gap: 5px; 
+      justify-content: center; 
+      align-items: center; 
+      flex-wrap: wrap;
+    }
+    tbody td.td-status {
+      text-align: center;
+      vertical-align: middle;
+      padding: 14px 10px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: .75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      min-width: 40px;
+    }
+    .badge-green { 
+      background: #d4edda; 
+      color: #2e7d32;
+      border: 1px solid #a8d5a8;
+    }
+    .badge-red { 
+      background: #fde8e6; 
+      color: #b84a2e;
+      border: 1px solid #f5c6c0;
+    }
+    .badge-gold { 
+      background: #fdf0d8; 
+      color: #c8943a;
+      border: 1px solid #f0d9a8;
+    }
+
+    .code { font-family: var(--font-m); font-size: .82rem; color: var(--ink3); }
+
+    /* ── Toast / Notificação ───────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 14px 20px;
+      border-radius: var(--radius);
+      font-size: .87rem;
+      font-weight: 500;
+      color: #fff;
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .25s, transform .25s;
+      max-width: 340px;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.success { background: var(--sage); }
+    #toast.error   { background: var(--rust); }
+
+    /* ── Vazio ─────────────────────────────────────────────── */
+    .empty-state {
+      padding: 40px;
+      text-align: center;
+      color: var(--ink3);
+    }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .empty-state p { font-size: .88rem; }
+
+    /* ── Search bar ────────────────────────────────────────── */
+    .search-bar {
+      position: relative;
+    }
+    .search-bar input {
+      padding: 8px 12px 8px 34px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      font-family: var(--font-b);
+      font-size: .85rem;
+      background: var(--paper);
+      color: var(--ink);
+      outline: none;
+      width: 220px;
+      transition: border-color .15s, width .2s;
+    }
+    .search-bar input:focus { border-color: var(--gold); width: 260px; }
+    .search-bar::before {
+      content: '🔍';
+      position: absolute;
+      left: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: .8rem;
+      pointer-events: none;
+    }
+
+    /* ── Multi-select para livros ──────────────────────────── */
+    .multi-select-container {
+      position: relative;
+    }
+    .multi-select-box {
+      min-height: 42px;
+      padding: 6px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--paper);
+      cursor: pointer;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .multi-select-box:focus-within { border-color: var(--gold); }
+    .multi-select-box.single-select {
+      flex-wrap: nowrap;
+      overflow: hidden;
+    }
+    .multi-select-placeholder {
+      color: var(--ink3);
+      font-size: .88rem;
+    }
+    .selected-item {
+      background: var(--rust);
+      color: #fff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: .78rem;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .selected-item.single {
+      background: var(--sage);
+      flex: 1;
+      justify-content: space-between;
+    }
+    .selected-item .remove {
+      cursor: pointer;
+      font-weight: bold;
+      opacity: .8;
+    }
+    .selected-item .remove:hover { opacity: 1; }
+    .dropdown-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 250px;
+      overflow-y: auto;
+      background: var(--paper);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      margin-top: 4px;
+      z-index: 1000;
+      display: none;
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+    .dropdown-list.show { display: block; }
+    .dropdown-search {
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--paper);
+    }
+    .dropdown-search input {
+      width: 100%;
+      padding: 6px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      font-size: .85rem;
+      outline: none;
+    }
+    .dropdown-search input:focus { border-color: var(--gold); }
+    .dropdown-item {
+      padding: 10px 12px;
+      cursor: pointer;
+      font-size: .85rem;
+      border-bottom: 1px solid var(--border);
+      transition: background .12s;
+    }
+    .dropdown-item:last-child { border-bottom: none; }
+    .dropdown-item:hover { background: rgba(200,148,58,.08); }
+    .dropdown-item.disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      background: var(--cream);
+    }
+    .dropdown-item.disabled:hover { background: var(--cream); }
+    .dropdown-item .item-code {
+      font-family: var(--font-m);
+      font-size: .75rem;
+      color: var(--ink3);
+    }
+    .dropdown-item .item-status {
+      font-size: .7rem;
+      margin-left: 8px;
+    }
+
+    /* ── Cabeçalhos ordenáveis ─────────────────────────────── */
+    thead th.sortable {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      padding-right: 20px;
+    }
+    thead th.sortable:hover {
+      background: rgba(200,148,58,.15);
+    }
+    thead th.sortable::after {
+      content: '⇅';
+      position: absolute;
+      right: 6px;
+      opacity: .3;
+      font-size: .9rem;
+    }
+    thead th.sortable.asc::after {
+      content: '▲';
+      opacity: 1;
+      color: var(--gold);
+    }
+    thead th.sortable.desc::after {
+      content: '▼';
+      opacity: 1;
+      color: var(--gold);
+    }
+
+    /* ── Previne scroll horizontal em todos os elementos ───── */
+    body, html, .app, .content, .page, .sidebar {
+      overflow-x: hidden !important;
+    }
+    
+    table, .table-card, .form-card, .stat-card {
+      max-width: 100% !important;
+      overflow-x: hidden !important;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── SIDEBAR ──────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1>📚 AMORABI</h1>
+      <span>Sistema de Biblioteca</span>
+    </div>
+    <nav>
+      <div class="nav-item active" data-page="dashboard" onclick="navigate('dashboard', this)">
+        <span class="icon">📊</span> Painel
+      </div>
+      <div class="nav-item" data-page="livros" onclick="navigate('livros', this)">
+        <span class="icon">📖</span> Livros
+      </div>
+      <div class="nav-item" data-page="alunos" onclick="navigate('alunos', this)">
+        <span class="icon">👥</span> Associados
+      </div>
+      <div class="nav-item" data-page="emprestimos" onclick="navigate('emprestimos', this)">
+        <span class="icon">🔄</span> Empréstimos
+      </div>
+    </nav>
+    <div class="sidebar-footer">AMORABI · v1.0</div>
+  </aside>
+
+  <!-- ── CONTEÚDO ──────────────────────────────────────────── -->
+  <main class="content">
+
+    <!-- ═══ PAINEL ═══════════════════════════════════════════ -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <h2>Painel Geral</h2>
+          <p>Visão geral da biblioteca</p>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total de Livros</div>
+          <div class="stat-value" id="stat-total-livros">—</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Disponíveis</div>
+          <div class="stat-value" id="stat-disponiveis">—</div>
+        </div>
+        <div class="stat-card accent">
+          <div class="stat-label">Emprestados</div>
+          <div class="stat-value" id="stat-emprestados">—</div>
+        </div>
+        <div class="stat-card gold">
+          <div class="stat-label">Total de Associados</div>
+          <div class="stat-value" id="stat-alunos">—</div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <h3>Empréstimos em Aberto</h3>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Livro</th>
+              <th>Associado</th>
+              <th>Empréstimo</th>
+              <th>Devolução Prevista</th>
+              <th class="th-status">Situação</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-dashboard"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══ LIVROS ════════════════════════════════════════════ -->
+    <section class="page" id="page-livros">
+      <div class="page-header">
+        <div>
+          <h2>Acervo de Livros</h2>
+          <p>Gerencie o catálogo da biblioteca</p>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="search-livros" placeholder="Buscar livro..." oninput="filtrarTabela('livros')" />
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h3>➕ Cadastrar Novo Livro</h3>
+        <div class="form-grid cols-4">
+          <div class="field">
+            <label>ISBN *</label>
+            <input type="text" id="livro-isbn" placeholder="ex: 9783161484100" oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
+          </div>
+          <div class="field" style="grid-column: span 2">
+            <label>Título *</label>
+            <input type="text" id="livro-titulo" placeholder="Título do livro" />
+          </div>
+          <div class="field">
+            <label>Autor *</label>
+            <input type="text" id="livro-autor" placeholder="Nome do autor" />
+          </div>
+          <div class="field">
+            <label>Ano</label>
+            <input type="number" id="livro-ano" placeholder="2024" min="1000" max="2099" />
+          </div>
+          <div class="field">
+            <label>Gênero</label>
+            <input type="text" id="livro-genero" placeholder="ex: Romance, Ficção..." />
+          </div>
+          <div class="field">
+            <label>Quantidade *</label>
+            <input type="number" id="livro-quantidade" placeholder="1" min="1" value="1" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="adicionarLivro()">Cadastrar Livro</button>
+          <button class="btn btn-secondary" onclick="limparFormLivro()">Limpar</button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <h3>Livros Cadastrados</h3>
+          <span class="table-count" id="count-livros">0</span>
+        </div>
+        <table id="tabela-livros">
+          <thead>
+            <tr>
+              <th class="sortable th-isbn" data-coluna="isbn" data-tabela="livros" onclick="ordenarTabela('livros', 'isbn')">ISBN</th>
+              <th class="sortable th-titulo" data-coluna="titulo" data-tabela="livros" onclick="ordenarTabela('livros', 'titulo')">Título</th>
+              <th class="sortable th-autor" data-coluna="autor" data-tabela="livros" onclick="ordenarTabela('livros', 'autor')">Autor</th>
+              <th class="sortable th-ano" data-coluna="ano" data-tabela="livros" onclick="ordenarTabela('livros', 'ano')">Ano</th>
+              <th class="sortable th-genero" data-coluna="genero" data-tabela="livros" onclick="ordenarTabela('livros', 'genero')">Gênero</th>
+              <th class="sortable th-quantidade" data-coluna="quantidade_total" data-tabela="livros" onclick="ordenarTabela('livros', 'quantidade_total')">Qtd</th>
+              <th class="sortable th-disponivel" data-coluna="quantidade_disponivel" data-tabela="livros" onclick="ordenarTabela('livros', 'quantidade_disponivel')">Disp.</th>
+              <th class="th-acoes">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-livros"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══ MODAL EDITAR LIVRO ════════════════════════════════ -->
+    <div class="modal-overlay" id="modal-editar-livro">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>✏️ Editar Livro</h3>
+          <button class="modal-close" onclick="fecharModal('modal-editar-livro')">×</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="edit-livro-id" />
+          <div class="form-grid cols-2">
+            <div class="field">
+              <label>ISBN *</label>
+              <input type="text" id="edit-livro-isbn" oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
+            </div>
+            <div class="field">
+              <label>Título *</label>
+              <input type="text" id="edit-livro-titulo" />
+            </div>
+          </div>
+          <div class="form-grid cols-2" style="margin-top: 14px;">
+            <div class="field">
+              <label>Autor *</label>
+              <input type="text" id="edit-livro-autor" />
+            </div>
+            <div class="field">
+              <label>Ano</label>
+              <input type="number" id="edit-livro-ano" min="1000" max="2099" />
+            </div>
+          </div>
+          <div class="form-grid cols-2" style="margin-top: 14px;">
+            <div class="field">
+              <label>Gênero</label>
+              <input type="text" id="edit-livro-genero" />
+            </div>
+            <div class="field">
+              <label>Quantidade *</label>
+              <input type="number" id="edit-livro-quantidade" min="1" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="fecharModal('modal-editar-livro')">Cancelar</button>
+          <button class="btn btn-primary" onclick="salvarEdicaoLivro()">Salvar Alterações</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ ASSOCIADOS ════════════════════════════════════════════ -->
+    <section class="page" id="page-alunos">
+      <div class="page-header">
+        <div>
+          <h2>Associados</h2>
+          <p>Gerencie os associados cadastrados</p>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="search-alunos" placeholder="Buscar associado..." oninput="filtrarTabela('alunos')" />
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h3>➕ Cadastrar Novo Associado</h3>
+        <p style="font-size: .85rem; color: var(--ink3); margin-bottom: 14px;">A matrícula será gerada automaticamente (1, 2, 3...)</p>
+        <div class="form-grid cols-3">
+          <div class="field">
+            <label>Nome Completo *</label>
+            <input type="text" id="aluno-nome" placeholder="Nome do associado" />
+          </div>
+          <div class="field">
+            <label>Data de Nascimento *</label>
+            <input type="date" id="aluno-nascimento" required />
+          </div>
+          <div class="field">
+            <label>Telefone *</label>
+            <input type="tel" id="aluno-telefone" placeholder="(00) 00000-0000" oninput="aplicarMascaraTelefone(this)" maxlength="15" required />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="adicionarAluno()">Cadastrar Associado</button>
+          <button class="btn btn-secondary" onclick="limparFormAluno()">Limpar</button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <h3>Associados Cadastrados</h3>
+          <span class="table-count" id="count-alunos">0</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th class="sortable" data-coluna="matricula" data-tabela="alunos" onclick="ordenarTabela('alunos', 'matricula')">Matrícula</th>
+              <th class="sortable" data-coluna="nome" data-tabela="alunos" onclick="ordenarTabela('alunos', 'nome')">Nome</th>
+              <th class="sortable" data-coluna="data_nascimento" data-tabela="alunos" onclick="ordenarTabela('alunos', 'data_nascimento')">Data de Nascimento</th>
+              <th class="sortable" data-coluna="idade" data-tabela="alunos" onclick="ordenarTabela('alunos', 'data_nascimento')">Idade</th>
+              <th>Telefone</th>
+              <th class="th-acoes">Ação</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-alunos"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══ MODAL EDITAR ASSOCIADO ════════════════════════════════ -->
+    <div class="modal-overlay" id="modal-editar-aluno">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>✏️ Editar Associado</h3>
+          <button class="modal-close" onclick="fecharModal('modal-editar-aluno')">×</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="edit-aluno-id" />
+          <div class="form-grid cols-3">
+            <div class="field">
+              <label>Matrícula</label>
+              <input type="text" id="edit-aluno-matricula" disabled style="background: var(--border); cursor: not-allowed;" />
+            </div>
+            <div class="field" style="grid-column: span 2">
+              <label>Nome Completo *</label>
+              <input type="text" id="edit-aluno-nome" />
+            </div>
+            <div class="field">
+              <label>Data de Nascimento</label>
+              <input type="date" id="edit-aluno-nascimento" />
+            </div>
+            <div class="field" style="grid-column: span 2">
+              <label>Telefone *</label>
+              <input type="tel" id="edit-aluno-telefone" oninput="aplicarMascaraTelefone(this)" maxlength="15" required />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="fecharModal('modal-editar-aluno')">Cancelar</button>
+          <button class="btn btn-primary" onclick="salvarEdicaoAluno()">Salvar Alterações</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ EMPRÉSTIMOS ═══════════════════════════════════════ -->
+    <section class="page" id="page-emprestimos">
+      <div class="page-header">
+        <div>
+          <h2>Empréstimos</h2>
+          <p>Controle de retirada e devolução de livros</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <select id="filtro-status" onchange="aplicarFiltros()" style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--radius); font-size: .85rem; background: var(--paper);">
+            <option value="">Todos os status</option>
+            <option value="ativo">Ativos</option>
+            <option value="devolvido">Devolvidos</option>
+            <option value="atrasado">Atrasados</option>
+          </select>
+          <div class="search-bar">
+            <input type="text" id="filtro-aluno" placeholder="Filtrar por associado..." oninput="aplicarFiltros()" />
+          </div>
+          <div class="search-bar">
+            <input type="text" id="filtro-livro" placeholder="Filtrar por livro..." oninput="aplicarFiltros()" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <h3>➕ Registrar Empréstimo</h3>
+        <div class="form-grid cols-2">
+          <div class="field">
+            <label>Livros * (selecione um ou mais)</label>
+            <div class="multi-select-container">
+              <div class="multi-select-box" id="livros-select-box" onclick="toggleLivrosDropdown()">
+                <span class="multi-select-placeholder" id="livros-placeholder">Clique para selecionar livros...</span>
+              </div>
+              <div class="dropdown-list" id="livros-dropdown">
+                <div class="dropdown-search">
+                  <input type="text" id="livros-search" placeholder="Buscar por ISBN ou título..." oninput="filtrarLivrosDropdown()" onclick="event.stopPropagation()" autocomplete="off" />
+                </div>
+                <div id="livros-dropdown-items"></div>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Associado *</label>
+            <div class="multi-select-container">
+              <div class="multi-select-box single-select" id="aluno-select-box" onclick="toggleAlunoDropdown()">
+                <span class="multi-select-placeholder" id="aluno-placeholder">Clique para selecionar aluno...</span>
+              </div>
+              <div class="dropdown-list" id="aluno-dropdown">
+                <div class="dropdown-search">
+                  <input type="text" id="aluno-search" placeholder="Buscar por matrícula ou nome..." oninput="filtrarAlunoDropdown()" onclick="event.stopPropagation()" autocomplete="off" />
+                </div>
+                <div id="aluno-dropdown-items"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="form-grid cols-2" style="margin-top: 14px;">
+          <div class="field">
+            <label>Período de Empréstimo *</label>
+            <select id="emp-periodo" onchange="calcularDataDevolucao()">
+              <option value="">Selecione o período...</option>
+              <option value="7">1 semana (7 dias)</option>
+              <option value="14" selected>2 semanas (14 dias)</option>
+              <option value="21">3 semanas (21 dias)</option>
+              <option value="30">1 mês (30 dias)</option>
+              <option value="custom">Personalizado...</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Data de Devolução Prevista *</label>
+            <input type="date" id="emp-devolucao" required />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="registrarEmprestimo()">Registrar Empréstimo</button>
+          <button class="btn btn-secondary" onclick="limparFormEmprestimo()">Limpar</button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <h3>Todos os Empréstimos</h3>
+          <span class="table-count" id="count-emprestimos">0</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th class="sortable th-livro" data-coluna="livro_titulo" data-tabela="emprestimos" onclick="ordenarTabela('emprestimos', 'livro_titulo')">Livro</th>
+              <th class="sortable th-associado" data-coluna="aluno_nome" data-tabela="emprestimos" onclick="ordenarTabela('emprestimos', 'aluno_nome')">Associado</th>
+              <th class="th-telefone">Telefone</th>
+              <th class="sortable th-data" data-coluna="data_emprestimo" data-tabela="emprestimos" onclick="ordenarTabela('emprestimos', 'data_emprestimo')">Retirada</th>
+              <th class="sortable th-data" data-coluna="data_devolucao_prevista" data-tabela="emprestimos" onclick="ordenarTabela('emprestimos', 'data_devolucao_prevista')">Devolução</th>
+              <th class="sortable th-data" data-coluna="data_devolucao_real" data-tabela="emprestimos" onclick="ordenarTabela('emprestimos', 'data_devolucao_real')">Devolvido</th>
+              <th class="th-status sortable" data-coluna="devolvido" data-tabela="emprestimos" onclick="ordenarTabela('emprestimos', 'devolvido')">Status</th>
+              <th class="th-acoes">Ação</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-emprestimos"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ═══ MODAL EDITAR EMPRÉSTIMO ═══════════════════════════ -->
+    <div class="modal-overlay" id="modal-editar-emprestimo">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>✏️ Editar Data de Devolução</h3>
+          <button class="modal-close" onclick="fecharModal('modal-editar-emprestimo')">×</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="edit-emprestimo-id" />
+          <p style="margin-bottom: 16px; color: var(--ink2); font-size: .9rem;">
+            <strong>Livro:</strong> <span id="edit-emprestimo-livro"></span><br>
+            <strong>Aluno:</strong> <span id="edit-emprestimo-aluno"></span>
+          </p>
+          <div class="form-grid cols-2">
+            <div class="field">
+              <label>Período de Empréstimo *</label>
+              <select id="edit-emp-periodo" onchange="calcularDataDevolucaoEdicao()">
+                <option value="">Selecione o período...</option>
+                <option value="7">1 semana (7 dias)</option>
+                <option value="14">2 semanas (14 dias)</option>
+                <option value="21">3 semanas (21 dias)</option>
+                <option value="30">1 mês (30 dias)</option>
+                <option value="custom">Personalizado...</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Data de Devolução Prevista</label>
+              <input type="date" id="edit-emprestimo-devolucao" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="fecharModal('modal-editar-emprestimo')">Cancelar</button>
+          <button class="btn btn-primary" onclick="salvarEdicaoEmprestimo()">Salvar Alterações</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── TOAST ──────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<script>
+  // ── API base URL ──────────────────────────────────────────
+  const API = "http://localhost:5000/api";
+
+  // ── Estado de ordenação ───────────────────────────────────
+  const estadoOrdenacao = {
+    alunos: { coluna: 'matricula', ordem: 'ASC' },
+    livros: { coluna: 'titulo', ordem: 'ASC' },
+    emprestimos: { coluna: 'data_emprestimo', ordem: 'DESC' }
+  };
+  console.log('Estado de ordenação inicializado:', estadoOrdenacao);
+
+  // ── Função de ordenação ───────────────────────────────────
+  function ordenarTabela(tabela, coluna) {
+    console.log('ordenarTabela chamada:', tabela, coluna);
+    const estado = estadoOrdenacao[tabela];
+    
+    // Se clicar na mesma coluna, inverte a ordem
+    if (estado.coluna === coluna) {
+      estado.ordem = estado.ordem === 'ASC' ? 'DESC' : 'ASC';
+    } else {
+      // Se mudar de coluna, começa com ASC
+      estado.coluna = coluna;
+      estado.ordem = 'ASC';
+    }
+    
+    console.log('Novo estado:', estado);
+    
+    // Atualiza os indicadores visuais
+    atualizarIndicadoresOrdenacao(tabela, coluna, estado.ordem);
+    
+    // Recarrega os dados com a nova ordenação
+    if (tabela === 'alunos') {
+      carregarAlunos();
+    } else if (tabela === 'livros') {
+      carregarLivros();
+    } else if (tabela === 'emprestimos') {
+      carregarEmprestimos();
+    }
+  }
+
+  function atualizarIndicadoresOrdenacao(tabela, colunaAtiva, ordem) {
+    try {
+      // Remove classes de todas as colunas da tabela
+      const ths = document.querySelectorAll(`th[data-tabela="${tabela}"]`);
+      ths.forEach(th => {
+        th.classList.remove('asc', 'desc');
+      });
+      
+      // Adiciona classe na coluna ativa
+      const thAtivo = document.querySelector(`th[data-tabela="${tabela}"][data-coluna="${colunaAtiva}"]`);
+      if (thAtivo) {
+        thAtivo.classList.add(ordem.toLowerCase());
+      }
+    } catch(e) {
+      console.error('Erro ao atualizar indicadores:', e);
+    }
+  }
+
+  // ── Navegação ─────────────────────────────────────────────
+  function navigate(page, el) {
+    console.log('Navegando para:', page);
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+    document.getElementById("page-" + page).classList.add("active");
+    el.classList.add("active");
+
+    // Carrega dados conforme a página
+    const loaders = {
+      dashboard: carregarDashboard,
+      livros:    carregarLivros,
+      alunos:    carregarAlunos,
+      emprestimos: () => { carregarEmprestimos(); carregarSelects(); },
+    };
+    if (loaders[page]) {
+      try {
+        loaders[page]();
+      } catch(e) {
+        console.error('Erro ao carregar página:', e);
+        toast('Erro ao carregar página: ' + e.message, 'error');
+      }
+    }
+  }
+
+  // ── Toast de notificação ──────────────────────────────────
+  function toast(msg, tipo = "success") {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.className = `show ${tipo}`;
+    setTimeout(() => el.classList.remove("show"), 3200);
+  }
+
+  // ── Formatação de data ────────────────────────────────────
+  function fmtData(s) {
+    if (!s) return "—";
+    const [y, m, d] = s.split("-");
+    return `${d}/${m}/${y}`;
+  }
+
+  // ── Formata telefone brasileiro ───────────────────────────
+  function fmtTelefone(tel) {
+    if (!tel) return "—";
+    // Remove tudo que não é número
+    const numeros = tel.replace(/\D/g, '');
+    
+    // Formata conforme o tamanho
+    if (numeros.length === 11) {
+      // (00) 00000-0000
+      return `(${numeros.slice(0,2)}) ${numeros.slice(2,7)}-${numeros.slice(7)}`;
+    } else if (numeros.length === 10) {
+      // (00) 0000-0000
+      return `(${numeros.slice(0,2)}) ${numeros.slice(2,6)}-${numeros.slice(6)}`;
+    }
+    return tel; // Retorna original se não for padrão brasileiro
+  }
+
+  // ── Formata ISBN ──────────────────────────────────────────
+  function fmtISBN(isbn) {
+    if (!isbn) return "—";
+    const numeros = isbn.replace(/\D/g, '');
+    
+    // ISBN-13: 978-85-333-0227-3
+    if (numeros.length === 13) {
+      return `${numeros.slice(0,3)}-${numeros.slice(3,5)}-${numeros.slice(5,8)}-${numeros.slice(8,12)}-${numeros.slice(12)}`;
+    }
+    // ISBN-10: 85-333-0227-2
+    else if (numeros.length === 10) {
+      return `${numeros.slice(0,2)}-${numeros.slice(2,5)}-${numeros.slice(5,9)}-${numeros.slice(9)}`;
+    }
+    return isbn; // Retorna original se não for padrão
+  }
+
+  // ── Verifica atraso ───────────────────────────────────────
+  function isAtrasado(dataPrev, devolvido) {
+    if (devolvido || !dataPrev) return false;
+    return new Date(dataPrev) < new Date();
+  }
+
+  // ════════════════════════════════════════════════════════
+  //  DASHBOARD
+  // ════════════════════════════════════════════════════════
+  async function carregarDashboard() {
+    try {
+      const [stats, emps] = await Promise.all([
+        fetch(`${API}/dashboard`).then(r => r.json()),
+        fetch(`${API}/emprestimos`).then(r => r.json()),
+      ]);
+
+      document.getElementById("stat-total-livros").textContent = stats.total_livros;
+      document.getElementById("stat-disponiveis").textContent  = stats.livros_disponiveis;
+      document.getElementById("stat-emprestados").textContent  = stats.livros_emprestados;
+      document.getElementById("stat-alunos").textContent       = stats.total_alunos;
+
+      const ativos = emps.filter(e => !e.devolvido);
+      const tbody = document.getElementById("tbody-dashboard");
+      tbody.innerHTML = ativos.length === 0
+        ? `<tr><td colspan="5"><div class="empty-state"><div class="icon">✅</div><p>Nenhum empréstimo em aberto.</p></div></td></tr>`
+        : ativos.map(e => {
+          const atrasado = isAtrasado(e.data_devolucao_prevista, e.devolvido);
+          return `<tr>
+            <td><div class="livro-info"><strong>${e.livro_titulo}</strong><span class="code">${fmtISBN(e.livro_isbn)}</span></div></td>
+            <td><div class="aluno-info"><strong>${e.aluno_nome}</strong><span class="code">Mat: ${e.aluno_matricula}</span></div></td>
+            <td>${fmtData(e.data_emprestimo)}</td>
+            <td>${fmtData(e.data_devolucao_prevista)}</td>
+            <td class="td-status"><span class="badge ${atrasado ? 'badge-red' : 'badge-gold'}">${atrasado ? '⚠️ Atrasado' : '⏳ Pendente'}</span></td>
+          </tr>`;
+        }).join("");
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  // ════════════════════════════════════════════════════════
+  //  LIVROS
+  // ════════════════════════════════════════════════════════
+  let todosLivros = [];
+
+  async function carregarLivros() {
+    try {
+      const estado = estadoOrdenacao.livros;
+      const url = `${API}/livros?ordenar_por=${estado.coluna}&ordem=${estado.ordem}`;
+      todosLivros = await fetch(url).then(r => r.json());
+      renderizarLivros(todosLivros);
+      atualizarIndicadoresOrdenacao('livros', estado.coluna, estado.ordem);
+    } catch(e) {
+      toast("Erro ao carregar livros.", "error");
+    }
+  }
+
+  function renderizarLivros(lista) {
+    const tbody = document.getElementById("tbody-livros");
+    document.getElementById("count-livros").textContent = lista.length;
+    tbody.innerHTML = lista.length === 0
+      ? `<tr><td colspan="8"><div class="empty-state"><div class="icon">📚</div><p>Nenhum livro cadastrado ainda.</p></div></td></tr>`
+      : lista.map(l => `<tr>
+          <td class="td-isbn">${fmtISBN(l.isbn)}</td>
+          <td class="td-titulo"><strong>${l.titulo}</strong></td>
+          <td class="td-autor">${l.autor}</td>
+          <td class="td-ano">${l.ano || "—"}</td>
+          <td class="td-genero">${l.genero || "—"}</td>
+          <td>${l.quantidade_total}</td>
+          <td><span class="badge ${l.quantidade_disponivel > 0 ? 'badge-green' : 'badge-red'}">${l.quantidade_disponivel}</span></td>
+          <td class="td-acoes">
+            <div>
+              <button class="btn btn-secondary btn-sm" onclick="abrirEdicaoLivro(${l.id})" title="Editar livro">✏️</button>
+              <button class="btn btn-primary btn-sm" onclick="gerarEtiquetaPDF(${l.id}, '${l.titulo.replace(/'/g, "\\'")}', '${l.autor.replace(/'/g, "\\'")}', '${fmtISBN(l.isbn)}')" title="Gerar etiqueta">🏷️</button>
+              <button class="btn btn-danger btn-sm" onclick="excluirLivro(${l.id})" title="Excluir livro">🗑️</button>
+            </div>
+          </td>
+        </tr>`).join("");
+  }
+
+  // ════════════════════════════════════════════════════════
+  //  FUNÇÕES AUXILIARES
+  // ════════════════════════════════════════════════════════
+
+  function removerAcentos(texto) {
+    return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function filtrarTabela(tipo) {
+    if (tipo === "livros") {
+      const q = document.getElementById("search-livros").value.toLowerCase();
+      const qSemAcento = removerAcentos(q);
+      renderizarLivros(todosLivros.filter(l =>
+        removerAcentos(l.titulo.toLowerCase()).includes(qSemAcento) ||
+        removerAcentos(l.autor.toLowerCase()).includes(qSemAcento) ||
+        l.isbn.toLowerCase().includes(q)
+      ));
+    } else {
+      const q = document.getElementById("search-alunos").value.toLowerCase();
+      const qSemAcento = removerAcentos(q);
+      renderizarAlunos(todosAlunos.filter(a =>
+        removerAcentos(a.nome.toLowerCase()).includes(qSemAcento) ||
+        String(a.matricula).includes(q)
+      ));
+    }
+  }
+
+  async function adicionarLivro() {
+    const dados = {
+      isbn: document.getElementById("livro-isbn").value.trim(),
+      titulo: document.getElementById("livro-titulo").value.trim(),
+      autor:  document.getElementById("livro-autor").value.trim(),
+      ano:    document.getElementById("livro-ano").value || null,
+      genero: document.getElementById("livro-genero").value.trim(),
+      quantidade_total: parseInt(document.getElementById("livro-quantidade").value) || 1,
+    };
+
+    if (!dados.isbn || !dados.titulo || !dados.autor) {
+      return toast("Preencha os campos obrigatórios (*).", "error");
+    }
+
+    try {
+      const res = await fetch(`${API}/livros`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+      });
+      const json = await res.json();
+      if (!res.ok) return toast(json.erro, "error");
+      toast(json.mensagem);
+      limparFormLivro();
+      carregarLivros();
+    } catch(e) {
+      toast("Erro de conexão com o servidor.", "error");
+    }
+  }
+
+  async function excluirLivro(id) {
+    if (!confirm("Excluir este livro? Esta ação não pode ser desfeita.")) return;
+    const res = await fetch(`${API}/livros/${id}`, { method: "DELETE" });
+    const json = await res.json();
+    if (!res.ok) return toast(json.erro, "error");
+    toast(json.mensagem);
+    carregarLivros();
+  }
+
+  function limparFormLivro() {
+    ["livro-isbn","livro-titulo","livro-autor","livro-ano","livro-genero","livro-quantidade"]
+      .forEach(id => document.getElementById(id).value = "");
+    document.getElementById("livro-quantidade").value = "1";
+  }
+
+  // ── Edição de Livros ──────────────────────────────────────
+  async function abrirEdicaoLivro(id) {
+    try {
+      const livros = await fetch(`${API}/livros`).then(r => r.json());
+      const livro = livros.find(l => l.id === id);
+      
+      if (!livro) {
+        toast("Livro não encontrado.", "error");
+        return;
+      }
+
+      document.getElementById("edit-livro-id").value = livro.id;
+      document.getElementById("edit-livro-isbn").value = livro.isbn;
+      document.getElementById("edit-livro-titulo").value = livro.titulo;
+      document.getElementById("edit-livro-autor").value = livro.autor;
+      document.getElementById("edit-livro-ano").value = livro.ano || "";
+      document.getElementById("edit-livro-genero").value = livro.genero || "";
+      document.getElementById("edit-livro-quantidade").value = livro.quantidade_total;
+
+      document.getElementById("modal-editar-livro").classList.add("show");
+    } catch(e) {
+      toast("Erro ao carregar dados do livro.", "error");
+    }
+  }
+
+  async function salvarEdicaoLivro() {
+    const id = document.getElementById("edit-livro-id").value;
+    const dados = {
+      isbn: document.getElementById("edit-livro-isbn").value.trim(),
+      titulo: document.getElementById("edit-livro-titulo").value.trim(),
+      autor: document.getElementById("edit-livro-autor").value.trim(),
+      ano: document.getElementById("edit-livro-ano").value || null,
+      genero: document.getElementById("edit-livro-genero").value.trim(),
+      quantidade_total: parseInt(document.getElementById("edit-livro-quantidade").value) || 1,
+    };
+
+    if (!dados.isbn || !dados.titulo || !dados.autor) {
+      return toast("Preencha os campos obrigatórios (*).", "error");
+    }
+
+    try {
+      const res = await fetch(`${API}/livros/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+      });
+      const json = await res.json();
+      if (!res.ok) return toast(json.erro, "error");
+      toast(json.mensagem);
+      fecharModal("modal-editar-livro");
+      carregarLivros();
+    } catch(e) {
+      toast("Erro de conexão com o servidor.", "error");
+    }
+  }
+
+  // ════════════════════════════════════════════════════════
+  //  ALUNOS
+  // ════════════════════════════════════════════════════════
+  let todosAlunos = [];
+
+  async function carregarAlunos() {
+    try {
+      const estado = estadoOrdenacao.alunos;
+      const url = `${API}/alunos?ordenar_por=${estado.coluna}&ordem=${estado.ordem}`;
+      todosAlunos = await fetch(url).then(r => r.json());
+      renderizarAlunos(todosAlunos);
+      atualizarIndicadoresOrdenacao('alunos', estado.coluna, estado.ordem);
+    } catch(e) {
+      toast("Erro ao carregar associados.", "error");
+    }
+  }
+
+  // ── Calcula idade ─────────────────────────────────────────
+  function calcularIdade(dataNascimento) {
+    if (!dataNascimento) return "—";
+    const hoje = new Date();
+    const nascimento = new Date(dataNascimento);
+    let idade = hoje.getFullYear() - nascimento.getFullYear();
+    const mes = hoje.getMonth() - nascimento.getMonth();
+    if (mes < 0 || (mes === 0 && hoje.getDate() < nascimento.getDate())) {
+      idade--;
+    }
+    return idade + " anos";
+  }
+
+  // ── Aplica máscara de telefone brasileiro ─────────────────
+  function aplicarMascaraTelefone(input) {
+    let valor = input.value.replace(/\D/g, '');
+    
+    if (valor.length <= 10) {
+      // (00) 0000-0000
+      valor = valor.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+    } else {
+      // (00) 00000-0000
+      valor = valor.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
+    }
+    
+    input.value = valor;
+  }
+
+  function renderizarAlunos(lista) {
+    const tbody = document.getElementById("tbody-alunos");
+    document.getElementById("count-alunos").textContent = lista.length;
+    tbody.innerHTML = lista.length === 0
+      ? `<tr><td colspan="7"><div class="empty-state"><div class="icon">👥</div><p>Nenhum associado cadastrado ainda.</p></div></td></tr>`
+      : lista.map(a => `<tr>
+          <td class="code">${a.matricula}</td>
+          <td><strong>${a.nome}</strong></td>
+          <td>${fmtData(a.data_nascimento)}</td>
+          <td>${calcularIdade(a.data_nascimento)}</td>
+          <td class="td-telefone">${fmtTelefone(a.telefone_pais)}</td>
+          <td class="td-acoes">
+            <div>
+              <button class="btn btn-secondary btn-sm" onclick="abrirEdicaoAluno(${a.id})">Editar</button>
+              <button class="btn btn-danger btn-sm" onclick="excluirAluno(${a.id})">Excluir</button>
+            </div>
+          </td>
+        </tr>`).join("");
+  }
+
+  async function adicionarAluno() {
+    const dados = {
+      nome: document.getElementById("aluno-nome").value.trim(),
+      data_nascimento: document.getElementById("aluno-nascimento").value || null,
+      telefone_pais: document.getElementById("aluno-telefone").value.trim(),
+    };
+
+    if (!dados.nome) {
+      return toast("Preencha o nome do associado.", "error");
+    }
+    
+    if (!dados.data_nascimento) {
+      return toast("Preencha a data de nascimento do associado.", "error");
+    }
+    
+    if (!dados.telefone_pais) {
+      return toast("Preencha o telefone.", "error");
+    }
+
+    try {
+      const res = await fetch(`${API}/alunos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+      });
+      const json = await res.json();
+      if (!res.ok) return toast(json.erro, "error");
+      toast(json.mensagem);
+      limparFormAluno();
+      carregarAlunos();
+    } catch(e) {
+      toast("Erro de conexão com o servidor.", "error");
+    }
+  }
+
+  async function excluirAluno(id) {
+    if (!confirm("Excluir este associado?")) return;
+    const res = await fetch(`${API}/alunos/${id}`, { method: "DELETE" });
+    const json = await res.json();
+    if (!res.ok) return toast(json.erro, "error");
+    toast(json.mensagem);
+    carregarAlunos();
+  }
+
+  function limparFormAluno() {
+    ["aluno-nome","aluno-nascimento","aluno-telefone"]
+      .forEach(id => document.getElementById(id).value = "");
+  }
+
+  // ── Edição de Alunos ──────────────────────────────────────
+  async function abrirEdicaoAluno(id) {
+    try {
+      const alunos = await fetch(`${API}/alunos`).then(r => r.json());
+      const aluno = alunos.find(a => a.id === id);
+      
+      if (!aluno) {
+        toast("Aluno não encontrado.", "error");
+        return;
+      }
+
+      document.getElementById("edit-aluno-id").value = aluno.id;
+      document.getElementById("edit-aluno-matricula").value = aluno.matricula;
+      document.getElementById("edit-aluno-nome").value = aluno.nome;
+      document.getElementById("edit-aluno-nascimento").value = aluno.data_nascimento || "";
+      document.getElementById("edit-aluno-telefone").value = aluno.telefone_pais || "";
+
+      document.getElementById("modal-editar-aluno").classList.add("show");
+    } catch(e) {
+      toast("Erro ao carregar dados do aluno.", "error");
+    }
+  }
+
+  async function salvarEdicaoAluno() {
+    const id = document.getElementById("edit-aluno-id").value;
+    const dados = {
+      nome: document.getElementById("edit-aluno-nome").value.trim(),
+      data_nascimento: document.getElementById("edit-aluno-nascimento").value || null,
+      telefone_pais: document.getElementById("edit-aluno-telefone").value.trim(),
+    };
+
+    if (!dados.nome) {
+      return toast("Preencha o nome do associado.", "error");
+    }
+    
+    if (!dados.telefone_pais) {
+      return toast("Preencha o telefone.", "error");
+    }
+
+    try {
+      const res = await fetch(`${API}/alunos/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+      });
+      const json = await res.json();
+      if (!res.ok) return toast(json.erro, "error");
+      toast(json.mensagem);
+      fecharModal("modal-editar-aluno");
+      carregarAlunos();
+    } catch(e) {
+      toast("Erro de conexão com o servidor.", "error");
+    }
+  }
+
+  // ════════════════════════════════════════════════════════
+  //  EMPRÉSTIMOS
+  // ════════════════════════════════════════════════════════
+  let todosLivrosDisponiveis = [];
+  let todosAlunosCadastrados = [];
+  let livrosSelecionados = [];
+  let alunoSelecionado = null;
+  let buscaAlunoTimeout = null;
+  let buscaLivroTimeout = null;
+
+  async function carregarSelects() {
+    try {
+      const [livros, alunos] = await Promise.all([
+        fetch(`${API}/livros`).then(r => r.json()),
+        fetch(`${API}/alunos`).then(r => r.json()),
+      ]);
+
+      todosLivrosDisponiveis = livros;
+      todosAlunosCadastrados = alunos;
+      
+      renderizarLivrosDropdown(livros);
+      renderizarAlunosDropdown(alunos);
+    } catch(e) {
+      toast("Erro ao carregar dados.", "error");
+    }
+  }
+
+  // ── LIVROS ────────────────────────────────────────────────
+  function renderizarLivrosDropdown(livros) {
+    const container = document.getElementById("livros-dropdown-items");
+    const disponiveis = livros.filter(l => l.quantidade_disponivel > 0 && !livrosSelecionados.includes(l.id));
+    const indisponiveis = livros.filter(l => l.quantidade_disponivel <= 0 && !livrosSelecionados.includes(l.id));
+    
+    container.innerHTML = disponiveis.length === 0 && indisponiveis.length === 0
+      ? `<div class="dropdown-item disabled">Nenhum livro encontrado</div>`
+      : [
+          ...disponiveis.map(l => `
+            <div class="dropdown-item" onclick="selecionarLivro(${l.id}, '${l.titulo.replace(/'/g, "\\'")}', '${l.isbn}')">
+              <strong>${l.titulo}</strong><br>
+              <span class="item-code">${l.isbn}</span>
+              <span class="item-status badge badge-green">✓ ${l.quantidade_disponivel} disponível(is)</span>
+            </div>
+          `),
+          ...indisponiveis.map(l => `
+            <div class="dropdown-item disabled">
+              <strong>${l.titulo}</strong><br>
+              <span class="item-code">${l.isbn}</span>
+              <span class="item-status badge badge-red">✗ Indisponível</span>
+            </div>
+          `)
+        ].join("");
+  }
+
+  function toggleLivrosDropdown() {
+    const dropdown = document.getElementById("livros-dropdown");
+    const alunoDropdown = document.getElementById("aluno-dropdown");
+    alunoDropdown.classList.remove("show");
+    dropdown.classList.toggle("show");
+    if (dropdown.classList.contains("show")) {
+      // Limpa o campo de busca e recarrega os livros
+      document.getElementById("livros-search").value = "";
+      renderizarLivrosDropdown(todosLivrosDisponiveis);
+      document.getElementById("livros-search").focus();
+    }
+  }
+
+  function selecionarLivro(id, titulo, codigo) {
+    if (livrosSelecionados.includes(id)) return;
+    
+    livrosSelecionados.push(id);
+    atualizarLivrosSelecionados();
+    renderizarLivrosDropdown(todosLivrosDisponiveis);
+  }
+
+  async function removerLivro(id) {
+    livrosSelecionados = livrosSelecionados.filter(l => l !== id);
+    atualizarLivrosSelecionados();
+    
+    // Recarrega a lista de livros do servidor
+    try {
+      const livros = await fetch(`${API}/livros`).then(r => r.json());
+      todosLivrosDisponiveis = livros;
+      
+      // Se o dropdown estiver aberto, atualiza a visualização
+      const dropdown = document.getElementById("livros-dropdown");
+      if (dropdown.classList.contains("show")) {
+        const buscaAtual = document.getElementById("livros-search").value.toLowerCase();
+        if (buscaAtual) {
+          const livrosFiltrados = livros.filter(l =>
+            l.titulo.toLowerCase().includes(buscaAtual) ||
+            l.isbn.toLowerCase().includes(buscaAtual) ||
+            l.id.toString().includes(buscaAtual)
+          );
+          renderizarLivrosDropdown(livrosFiltrados);
+        } else {
+          renderizarLivrosDropdown(livros);
+        }
+      }
+    } catch(e) {
+      console.error("Erro ao recarregar livros:", e);
+      renderizarLivrosDropdown(todosLivrosDisponiveis);
+    }
+  }
+
+  function atualizarLivrosSelecionados() {
+    const box = document.getElementById("livros-select-box");
+    
+    if (livrosSelecionados.length === 0) {
+      box.innerHTML = `<span class="multi-select-placeholder" id="livros-placeholder">Clique para selecionar livros...</span>`;
+    } else {
+      const livrosHTML = livrosSelecionados.map(id => {
+        const livro = todosLivrosDisponiveis.find(l => l.id === id);
+        return livro ? `
+          <div class="selected-item">
+            ${livro.titulo} (${livro.isbn})
+            <span class="remove" onclick="event.stopPropagation(); removerLivro(${id})">×</span>
+          </div>
+        ` : '';
+      }).join("");
+      
+      box.innerHTML = livrosHTML;
+    }
+  }
+
+  function filtrarLivrosDropdown() {
+    // Cancela a busca anterior se ainda estiver pendente
+    if (buscaLivroTimeout) {
+      clearTimeout(buscaLivroTimeout);
+    }
+    
+    const inputBusca = document.getElementById("livros-search");
+    const busca = inputBusca.value.trim();
+    
+    if (busca === "") {
+      renderizarLivrosDropdown(todosLivrosDisponiveis);
+      return;
+    }
+    
+    // Adiciona debounce de 300ms
+    buscaLivroTimeout = setTimeout(async () => {
+      try {
+        // Faz busca no servidor - NÃO faz filtro local
+        const url = `${API}/livros?busca=${encodeURIComponent(busca)}`;
+        const livros = await fetch(url).then(r => r.json());
+        
+        // Verifica se o campo de busca ainda tem o mesmo valor
+        if (inputBusca.value.trim() === busca) {
+          renderizarLivrosDropdown(livros);
+        }
+      } catch(e) {
+        console.error("Erro ao buscar livros:", e);
+        toast("Erro ao buscar livros.", "error");
+      }
+    }, 300);
+  }
+
+  // ── ALUNOS ────────────────────────────────────────────────
+  function renderizarAlunosDropdown(alunos) {
+    const container = document.getElementById("aluno-dropdown-items");
+    
+    // Limpa completamente o container antes de renderizar
+    container.innerHTML = "";
+    
+    if (alunos.length === 0) {
+      container.innerHTML = `<div class="dropdown-item disabled">Nenhum associado encontrado</div>`;
+    } else {
+      container.innerHTML = alunos.map(a => `
+          <div class="dropdown-item" onclick="selecionarAluno(${a.id}, '${a.nome.replace(/'/g, "\\'")}', '${a.matricula}')">
+            <strong>${a.nome}</strong><br>
+            <span class="item-code">Matrícula: ${a.matricula}</span>
+          </div>
+        `).join("");
+    }
+  }
+
+  function toggleAlunoDropdown() {
+    const dropdown = document.getElementById("aluno-dropdown");
+    const livrosDropdown = document.getElementById("livros-dropdown");
+    livrosDropdown.classList.remove("show");
+    dropdown.classList.toggle("show");
+    if (dropdown.classList.contains("show")) {
+      // Limpa o campo de busca e mostra todos os associados
+      document.getElementById("aluno-search").value = "";
+      renderizarAlunosDropdown(todosAlunosCadastrados);
+      document.getElementById("aluno-search").focus();
+    }
+  }
+
+  function selecionarAluno(id, nome, matricula) {
+    alunoSelecionado = { id, nome, matricula };
+    atualizarAlunoSelecionado();
+    document.getElementById("aluno-dropdown").classList.remove("show");
+    document.getElementById("aluno-search").value = "";
+  }
+
+  function removerAluno() {
+    alunoSelecionado = null;
+    atualizarAlunoSelecionado();
+  }
+
+  function atualizarAlunoSelecionado() {
+    const box = document.getElementById("aluno-select-box");
+    
+    // Limpa completamente o conteúdo primeiro
+    box.innerHTML = '';
+    
+    if (!alunoSelecionado) {
+      // Recria o placeholder quando não há associado selecionado
+      box.innerHTML = `<span class="multi-select-placeholder" id="aluno-placeholder">Clique para selecionar associado...</span>`;
+    } else {
+      // Mostra o aluno selecionado
+      box.innerHTML = `
+        <div class="selected-item single">
+          <span>${alunoSelecionado.nome} (${alunoSelecionado.matricula})</span>
+          <span class="remove" onclick="event.stopPropagation(); removerAluno()">×</span>
+        </div>
+      `;
+    }
+  }
+
+  function filtrarAlunoDropdown() {
+    // Cancela a busca anterior se ainda estiver pendente
+    if (buscaAlunoTimeout) {
+      clearTimeout(buscaAlunoTimeout);
+    }
+    
+    const inputBusca = document.getElementById("aluno-search");
+    const busca = inputBusca.value.trim();
+    
+    if (busca === "") {
+      // Se a busca estiver vazia, mostra todos os associados
+      renderizarAlunosDropdown(todosAlunosCadastrados);
+      return;
+    }
+    
+    // Adiciona debounce de 300ms
+    buscaAlunoTimeout = setTimeout(async () => {
+      try {
+        // Faz busca no servidor - NÃO faz filtro local
+        const url = `${API}/alunos?busca=${encodeURIComponent(busca)}`;
+        const alunos = await fetch(url).then(r => r.json());
+        
+        // Verifica se o campo de busca ainda tem o mesmo valor
+        if (inputBusca.value.trim() === busca) {
+          renderizarAlunosDropdown(alunos);
+        }
+      } catch(e) {
+        console.error("Erro ao buscar associados:", e);
+        toast("Erro ao buscar associados.", "error");
+      }
+    }, 300);
+  }
+
+  // ── GERENCIAMENTO ─────────────────────────────────────────
+  // Fechar dropdowns ao clicar fora
+  document.addEventListener("click", (e) => {
+    const livrosDropdown = document.getElementById("livros-dropdown");
+    const livrosBox = document.getElementById("livros-select-box");
+    const alunoDropdown = document.getElementById("aluno-dropdown");
+    const alunoBox = document.getElementById("aluno-select-box");
+    
+    if (livrosDropdown && livrosBox && !livrosBox.contains(e.target) && !livrosDropdown.contains(e.target)) {
+      livrosDropdown.classList.remove("show");
+    }
+    
+    if (alunoDropdown && alunoBox && !alunoBox.contains(e.target) && !alunoDropdown.contains(e.target)) {
+      alunoDropdown.classList.remove("show");
+    }
+  });
+
+  let todosEmprestimos = [];
+
+  async function carregarEmprestimos() {
+    try {
+      const estado = estadoOrdenacao.emprestimos;
+      const url = `${API}/emprestimos?ordenar_por=${estado.coluna}&ordem=${estado.ordem}`;
+      todosEmprestimos = await fetch(url).then(r => r.json());
+      renderizarEmprestimos(todosEmprestimos);
+      atualizarIndicadoresOrdenacao('emprestimos', estado.coluna, estado.ordem);
+    } catch(e) {
+      toast("Erro ao carregar empréstimos.", "error");
+    }
+  }
+
+  function renderizarEmprestimos(lista) {
+    document.getElementById("count-emprestimos").textContent = lista.length;
+    const tbody = document.getElementById("tbody-emprestimos");
+    tbody.innerHTML = lista.length === 0
+      ? `<tr><td colspan="8"><div class="empty-state"><div class="icon">🔄</div><p>Nenhum empréstimo registrado.</p></div></td></tr>`
+      : lista.map(e => {
+        const atrasado = isAtrasado(e.data_devolucao_prevista, e.devolvido);
+        let status, acao = "";
+        if (e.devolvido) {
+          status = `<span class="badge badge-green">✓ Devolvido</span>`;
+          acao = `<div>—</div>`;
+        } else if (atrasado) {
+          status = `<span class="badge badge-red">⚠️ Atrasado</span>`;
+          acao = `
+            <div>
+              <button class="btn btn-secondary btn-sm" onclick="abrirEdicaoEmprestimo(${e.id}, '${e.livro_titulo.replace(/'/g, "\\'")}', '${e.aluno_nome.replace(/'/g, "\\'")}', '${e.data_devolucao_prevista || ''}')">Editar</button>
+              <button class="btn btn-success btn-sm" onclick="devolverLivro(${e.id})">Devolver</button>
+            </div>
+          `;
+        } else {
+          status = `<span class="badge badge-gold">⏳ Pendente</span>`;
+          acao = `
+            <div>
+              <button class="btn btn-secondary btn-sm" onclick="abrirEdicaoEmprestimo(${e.id}, '${e.livro_titulo.replace(/'/g, "\\'")}', '${e.aluno_nome.replace(/'/g, "\\'")}', '${e.data_devolucao_prevista || ''}')">Editar</button>
+              <button class="btn btn-success btn-sm" onclick="devolverLivro(${e.id})">Devolver</button>
+            </div>
+          `;
+        }
+        return `<tr>
+          <td><div class="livro-info"><strong>${e.livro_titulo}</strong><span class="code">${fmtISBN(e.livro_isbn)}</span></div></td>
+          <td><div class="aluno-info"><strong>${e.aluno_nome}</strong><span class="code">Mat: ${e.aluno_matricula}</span></div></td>
+          <td class="td-telefone">${fmtTelefone(e.aluno_telefone)}</td>
+          <td>${fmtData(e.data_emprestimo)}</td>
+          <td>${fmtData(e.data_devolucao_prevista)}</td>
+          <td>${fmtData(e.data_devolucao_real)}</td>
+          <td class="td-status">${status}</td>
+          <td class="td-acoes">${acao}</td>
+        </tr>`;
+      }).join("");
+  }
+
+  async function aplicarFiltros() {
+    const filtroStatus = document.getElementById("filtro-status").value;
+    const filtroAluno = document.getElementById("filtro-aluno").value.toLowerCase();
+    const filtroLivro = document.getElementById("filtro-livro").value.toLowerCase();
+
+    try {
+      // Monta a URL com os parâmetros de filtro e ordenação
+      const params = new URLSearchParams();
+      const estado = estadoOrdenacao.emprestimos;
+      
+      params.append("ordenar_por", estado.coluna);
+      params.append("ordem", estado.ordem);
+      
+      if (filtroStatus) params.append("status", filtroStatus);
+      if (filtroAluno) params.append("aluno", filtroAluno);
+      if (filtroLivro) params.append("livro", filtroLivro);
+
+      const url = `${API}/emprestimos?${params.toString()}`;
+      const lista = await fetch(url).then(r => r.json());
+      todosEmprestimos = lista;
+      renderizarEmprestimos(lista);
+      atualizarIndicadoresOrdenacao('emprestimos', estado.coluna, estado.ordem);
+    } catch(e) {
+      toast("Erro ao aplicar filtros.", "error");
+    }
+  }
+
+  async function registrarEmprestimo() {
+    if (livrosSelecionados.length === 0) {
+      return toast("Selecione pelo menos um livro.", "error");
+    }
+
+    if (!alunoSelecionado) {
+      return toast("Selecione um associado.", "error");
+    }
+
+    const dataDevolucao = document.getElementById("emp-devolucao").value;
+    
+    // Validação: data de devolução é obrigatória
+    if (!dataDevolucao) {
+      return toast("Selecione uma data de devolução prevista.", "error");
+    }
+    
+    // Validação: não permite data de devolução no passado
+    const dataEscolhida = new Date(dataDevolucao + 'T00:00:00');
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0); // Remove horas para comparar apenas a data
+    
+    if (dataEscolhida < hoje) {
+      return toast("A data de devolução não pode ser no passado.", "error");
+    }
+
+    const dados = {
+      livros_ids: livrosSelecionados,
+      aluno_id: alunoSelecionado.id,
+      data_devolucao_prevista: dataDevolucao,
+    };
+
+    try {
+      const res = await fetch(`${API}/emprestimos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+      });
+      
+      const json = await res.json();
+      
+      if (res.ok) {
+        // Sucesso!
+        toast(json.mensagem || "Empréstimo registrado com sucesso!");
+        
+        // Limpa o formulário ANTES de recarregar
+        limparFormEmprestimo();
+        
+        // Aguarda um pouco para garantir que a limpeza foi aplicada
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Recarrega APENAS os dados da aba de empréstimos (não muda de aba)
+        await carregarEmprestimos();
+        await carregarSelects();
+        
+        // Rola suavemente para a tabela de empréstimos para mostrar o novo registro
+        setTimeout(() => {
+          const tabelaEmprestimos = document.querySelector('#page-emprestimos .table-card');
+          if (tabelaEmprestimos) {
+            tabelaEmprestimos.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 200);
+      } else {
+        // Erro do servidor (400, 409, etc)
+        toast(json.erro || "Erro ao registrar empréstimo.", "error");
+        
+        // Recarrega os dados mesmo com erro para atualizar disponibilidade
+        await carregarEmprestimos();
+        await carregarSelects();
+      }
+      
+    } catch(e) {
+      // Erro de rede ou resposta inválida
+      console.error("Erro ao registrar empréstimo:", e);
+      toast("Empréstimo processado. Atualizando página...", "success");
+      
+      // Limpa e recarrega
+      limparFormEmprestimo();
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await carregarEmprestimos();
+      await carregarSelects();
+      
+      // Rola para a tabela mesmo em caso de erro
+      setTimeout(() => {
+        const tabelaEmprestimos = document.querySelector('#page-emprestimos .table-card');
+        if (tabelaEmprestimos) {
+          tabelaEmprestimos.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 200);
+    }
+  }
+
+  function limparFormEmprestimo() {
+    // Limpa livros selecionados
+    livrosSelecionados = [];
+    atualizarLivrosSelecionados();
+    
+    // Limpa aluno selecionado
+    alunoSelecionado = null;
+    
+    // Limpa campos de busca
+    document.getElementById("livros-search").value = "";
+    document.getElementById("aluno-search").value = "";
+    
+    // Limpa período e data de devolução
+    document.getElementById("emp-periodo").value = "";
+    document.getElementById("emp-devolucao").value = "";
+    
+    // Fecha os dropdowns
+    document.getElementById("livros-dropdown").classList.remove("show");
+    document.getElementById("aluno-dropdown").classList.remove("show");
+    
+    // Força atualização visual do aluno - LIMPA COMPLETAMENTE
+    const alunoBox = document.getElementById("aluno-select-box");
+    alunoBox.innerHTML = '';
+    alunoBox.innerHTML = `<span class="multi-select-placeholder" id="aluno-placeholder">Clique para selecionar aluno...</span>`;
+  }
+
+  // ════════════════════════════════════════════════════════
+  //  CÁLCULO AUTOMÁTICO DE DATA DE DEVOLUÇÃO
+  // ════════════════════════════════════════════════════════
+  
+  function calcularDataDevolucao() {
+    const periodoSelect = document.getElementById("emp-periodo");
+    const dataDevolucaoInput = document.getElementById("emp-devolucao");
+    const dias = parseInt(periodoSelect.value);
+    
+    if (periodoSelect.value === "custom") {
+      // Se for personalizado, apenas habilita o campo para edição manual
+      dataDevolucaoInput.focus();
+      return;
+    }
+    
+    if (!dias) {
+      // Se não selecionou nada, limpa o campo
+      dataDevolucaoInput.value = "";
+      return;
+    }
+    
+    // Calcula a data de devolução
+    const hoje = new Date();
+    const dataDevolucao = new Date(hoje);
+    dataDevolucao.setDate(hoje.getDate() + dias);
+    
+    // Formata a data para o formato YYYY-MM-DD (padrão do input date)
+    const ano = dataDevolucao.getFullYear();
+    const mes = String(dataDevolucao.getMonth() + 1).padStart(2, '0');
+    const dia = String(dataDevolucao.getDate()).padStart(2, '0');
+    
+    dataDevolucaoInput.value = `${ano}-${mes}-${dia}`;
+  }
+
+  // ════════════════════════════════════════════════════════
+  //  CÁLCULO DE DATA DE DEVOLUÇÃO - MODAL DE EDIÇÃO
+  // ════════════════════════════════════════════════════════
+  
+  function calcularDataDevolucaoEdicao() {
+    const periodoSelect = document.getElementById("edit-emp-periodo");
+    const dataDevolucaoInput = document.getElementById("edit-emprestimo-devolucao");
+    const dias = parseInt(periodoSelect.value);
+    
+    if (periodoSelect.value === "custom") {
+      // Se for personalizado, apenas habilita o campo para edição manual
+      dataDevolucaoInput.focus();
+      return;
+    }
+    
+    if (!dias) {
+      // Se não selecionou nada, não altera o campo
+      return;
+    }
+    
+    // Calcula a data de devolução a partir de hoje
+    const hoje = new Date();
+    const dataDevolucao = new Date(hoje);
+    dataDevolucao.setDate(hoje.getDate() + dias);
+    
+    // Formata a data para o formato YYYY-MM-DD (padrão do input date)
+    const ano = dataDevolucao.getFullYear();
+    const mes = String(dataDevolucao.getMonth() + 1).padStart(2, '0');
+    const dia = String(dataDevolucao.getDate()).padStart(2, '0');
+    
+    dataDevolucaoInput.value = `${ano}-${mes}-${dia}`;
+  }
+
+  async function devolverLivro(id) {
+    if (!confirm("Confirmar devolução deste livro?")) return;
+    const res = await fetch(`${API}/emprestimos/${id}/devolver`, { method: "PUT" });
+    const json = await res.json();
+    if (!res.ok) return toast(json.erro, "error");
+    toast(json.mensagem);
+    carregarEmprestimos();
+    carregarSelects();
+  }
+
+  // ── Edição de Empréstimos ─────────────────────────────────
+  function abrirEdicaoEmprestimo(id, livroTitulo, alunoNome, dataDevolucao) {
+    document.getElementById("edit-emprestimo-id").value = id;
+    document.getElementById("edit-emprestimo-livro").textContent = livroTitulo;
+    document.getElementById("edit-emprestimo-aluno").textContent = alunoNome;
+    document.getElementById("edit-emprestimo-devolucao").value = dataDevolucao || "";
+    
+    // Limpa o campo de período ao abrir o modal
+    document.getElementById("edit-emp-periodo").value = "";
+
+    document.getElementById("modal-editar-emprestimo").classList.add("show");
+  }
+
+  async function salvarEdicaoEmprestimo() {
+    const id = document.getElementById("edit-emprestimo-id").value;
+    const dados = {
+      data_devolucao_prevista: document.getElementById("edit-emprestimo-devolucao").value || null,
+    };
+
+    try {
+      const res = await fetch(`${API}/emprestimos/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+      });
+      const json = await res.json();
+      if (!res.ok) return toast(json.erro, "error");
+      toast(json.mensagem);
+      fecharModal("modal-editar-emprestimo");
+      carregarEmprestimos();
+    } catch(e) {
+      toast("Erro de conexão com o servidor.", "error");
+    }
+  }
+
+  // ── Gerenciamento de Modais ──────────────────────────────
+  function fecharModal(modalId) {
+    document.getElementById(modalId).classList.remove("show");
+  }
+
+  // Fechar modal ao clicar fora
+  document.addEventListener("click", (e) => {
+    if (e.target.classList.contains("modal-overlay")) {
+      e.target.classList.remove("show");
+    }
+  });
+
+  // ── Inicialização ─────────────────────────────────────────
+  // Carrega os dados automaticamente quando a página é aberta
+  // ════════════════════════════════════════════════════════
+  //  GERAÇÃO DE ETIQUETA PDF
+  // ════════════════════════════════════════════════════════
+  
+  function gerarEtiquetaPDF(id, titulo, autor, isbn) {
+    try {
+      // Busca os dados completos do livro para pegar o gênero
+      const livro = todosLivros.find(l => l.id === id);
+      const genero = livro ? livro.genero : '';
+      const ano = livro ? livro.ano : new Date().getFullYear();
+      const quantidadeTotal = livro ? livro.quantidade_total : 1;
+      
+      // Cria uma nova instância do jsPDF
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: [50, 80] // Tamanho da etiqueta: 50mm x 80mm
+      });
+
+      // Configurações
+      const larguraEtiqueta = 80;
+      const margemTopo = 10;
+
+      // Extrai as 3 primeiras letras do gênero em maiúsculas
+      const generoAbrev = genero ? genero.substring(0, 3).toUpperCase() : 'GER';
+      
+      // Usa o nome completo do autor
+      const nomeAutor = autor.trim();
+      
+      // Extrai o sobrenome para o nome do arquivo
+      const partesAutor = autor.trim().split(' ');
+      const sobrenomeAutor = partesAutor[partesAutor.length - 1];
+      
+      // Código da biblioteca (formato: Bib.ANO.ID)
+      const codigoBib = `Bib.${ano}.${String(id).padStart(3, '0')}`;
+
+      // ═══ GERA UMA ETIQUETA PARA CADA EXEMPLAR ═══
+      for (let exemplar = 1; exemplar <= quantidadeTotal; exemplar++) {
+        // Se não for a primeira etiqueta, adiciona uma nova página
+        if (exemplar > 1) {
+          doc.addPage();
+        }
+
+        let yPos = margemTopo;
+
+        // ═══ GÊNERO (3 letras maiúsculas) - CENTRALIZADO ═══
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(generoAbrev, larguraEtiqueta / 2, yPos, { align: 'center' });
+        yPos += 8;
+
+        // ═══ AUTOR (Nome Completo) - CENTRALIZADO ═══
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        const autorLinhas = doc.splitTextToSize(nomeAutor, 65);
+        autorLinhas.forEach(linha => {
+          doc.text(linha, larguraEtiqueta / 2, yPos, { align: 'center' });
+          yPos += 6;
+        });
+        yPos += 2;
+
+        // ═══ EXEMPLAR ATUAL - CENTRALIZADO ═══
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`ex.${exemplar}/${quantidadeTotal}`, larguraEtiqueta / 2, yPos, { align: 'center' });
+        yPos += 6;
+
+        // ═══ CÓDIGO DA BIBLIOTECA - CENTRALIZADO ═══
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text(codigoBib, larguraEtiqueta / 2, yPos, { align: 'center' });
+      }
+
+      // Salva o PDF
+      const nomeArquivo = `etiquetas_${generoAbrev}_${sobrenomeAutor}_${id}_${quantidadeTotal}x.pdf`;
+      doc.save(nomeArquivo);
+      
+      const mensagem = quantidadeTotal > 1 
+        ? `${quantidadeTotal} etiquetas geradas com sucesso!` 
+        : 'Etiqueta gerada com sucesso!';
+      toast(mensagem, 'success');
+    } catch (error) {
+      console.error('Erro ao gerar etiqueta:', error);
+      toast('Erro ao gerar etiqueta: ' + error.message, 'error');
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', function() {
+    carregarDashboard();
+    carregarLivros();
+    carregarAlunos();
+    carregarEmprestimos();
+    carregarSelects();
+    
+    // Define 2 semanas como padrão e calcula a data
+    setTimeout(() => {
+      const periodoSelect = document.getElementById("emp-periodo");
+      if (periodoSelect) {
+        periodoSelect.value = "14"; // 2 semanas
+        calcularDataDevolucao();
+      }
+    }, 100);
+  });
+</script>
+</body>
+</html>
